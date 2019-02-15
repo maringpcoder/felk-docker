@@ -1,0 +1,81 @@
+input {
+	beats {
+        port => 5044
+      }
+}
+
+## Add your filters / logstash plugins configuration here
+filter {
+#如果是服务里边的日志,采用grok过滤规则来提取日志
+if "app_logs" in [tags] {
+    grok{
+    # \d{4}-\d{1,2}-\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2}]\saccess.INFO:\s{2}{"param":(.*)[}$]
+        #[2018-11-30 16:34:49] access.INFO:  {"param":{
+        match=>{
+            "message"=>'(?<request_time>\d{4}-\d{1,2}-\d{1,2}\s\d{1,2}:\d{1,2}:\d{1,2})]\saccess.INFO:\s{2}(?<params_grok>{"param":(.*)[}$])'
+        }
+        remove_field => ["message","beat"]
+    }
+}
+
+#如果是nginx定制日志，使用json插件过滤
+if "json_nginxaccess" in [tags] {
+        json {
+            source => "message"
+            remove_field => ["message", "beat"]
+        }
+        kv {
+                        source => "request"
+                        field_split => "&?"
+                        value_split => "="
+          }
+          urldecode {
+                  all_fields => true
+              }
+
+        date {
+
+                 #25/Jan/2019:02:00:09 +0000
+                 match => ["mydate","yyyy-MM-dd:HH:mm:ss Z"]
+                 #match => ["isotime","dd/MMM/yyyy:HH:mm:ss Z"]
+                 target => "@timestamp"
+        }
+    }
+}
+
+output {
+    stdout{
+        codec=>rubydebug
+    }
+#    if "json_nginxaccess" in [tags] {
+#        elasticsearch {
+#                             #hosts => ["127.0.0.1:9200"]
+#            hosts => "elasticsearch:9200"
+                             #index => "logstash-%{type}-%{+YYYY.MM.dd}"
+#            index => "logstash-nginxaccess-%{type}-%{+YYYY.MM.dd}"
+                             #flush_size => 2000
+                             #idle_flush_time => 10
+                             #sniffing => true
+                             #template_overwrite => true
+#        }
+#    }
+
+#    if "user_center_service_log" in [tags] {
+#        elasticsearch {
+                                     #hosts => ["127.0.0.1:9200"]
+#                    hosts => "elasticsearch:9200"
+                                     #index => "logstash-%{type}-%{+YYYY.MM.dd}"
+#                    index => "logstash-nginxaccess-%{type}-%{+YYYY.MM.dd}"
+                                     #flush_size => 2000
+                                     #idle_flush_time => 10
+                                     #sniffing => true
+                                     #template_overwrite => true
+#                }
+#    }
+
+
+	elasticsearch {
+		hosts => "elasticsearch:9200"
+		index => "filebeat-new-%{+YYYY.MM.dd}"
+	}
+}
