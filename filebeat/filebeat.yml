@@ -1,0 +1,17 @@
+
+#=========================== Filebeat prospectors =============================
+
+filebeat.prospectors:
+- input_type: log
+  paths:
+    - /Users/marin/workspace/docker/micro_service/nginx/app/*
+  tags: "app_logs"
+  document_type: json-nginxaccess
+#- input_type: log
+#  paths:
+#    - /Users/marin/workspace/docker/micro_service/user_center/*
+#  tags: "user_center"
+  
+output.logstash:
+  hosts: ["127.0.0.1:5044"]
+  index: "filebeat"
